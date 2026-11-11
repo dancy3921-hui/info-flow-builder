@@ -22,7 +22,7 @@
 
 ```
 请从这个 GitHub 仓库安装 skill：
-https://github.com/<用户名>/info-flow-builder
+https://github.com/dancy3921-hui/info-flow-builder
 clone 到 ~/.workbuddy/skills/info-flow-builder/，
 装好后告诉我「帮我搭一个自己的信息流」怎么用。
 ```
@@ -30,7 +30,7 @@ clone 到 ~/.workbuddy/skills/info-flow-builder/，
 Agent 手动操作的话就是两条命令：
 
 ```bash
-git clone https://github.com/<用户名>/info-flow-builder.git ~/.workbuddy/skills/info-flow-builder
+git clone https://github.com/dancy3921-hui/info-flow-builder.git ~/.workbuddy/skills/info-flow-builder
 ```
 
 Windows 下 `~` 即 `C:\Users\<你的用户名>`。
