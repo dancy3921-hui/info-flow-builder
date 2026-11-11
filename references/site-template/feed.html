@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Dancy 的信息流</title>
+<style>
+  :root {
+    --bg: #FAFAF7;
+    --card: #FFFFFF;
+    --text: #2C2C2A;
+    --muted: #888780;
+    --line: #E8E6DF;
+    --accent: #0F6E56;
+    --accent-light: #E1F5EE;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  .header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(250,250,247,.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+    padding: 18px 20px 12px;
+  }
+  .header h1 { font-size: 22px; font-weight: 600; letter-spacing: .5px; }
+  .header .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .header .add-btn {
+    position: absolute; right: 20px; top: 20px;
+    background: var(--accent); color: #fff; border: none;
+    padding: 8px 16px; border-radius: 20px; font-size: 14px;
+    text-decoration: none; font-weight: 500;
+  }
+  .filters {
+    display: flex; gap: 8px; padding: 12px 20px; overflow-x: auto;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .chip {
+    flex-shrink: 0; padding: 6px 14px; border-radius: 16px;
+    border: 1px solid var(--line); background: var(--card);
+    font-size: 13px; color: var(--muted); cursor: pointer;
+  }
+  .chip.active { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+  .feed { padding: 4px 16px 80px; max-width: 640px; margin: 0 auto; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 18px; margin-bottom: 14px;
+  }
+  .card .meta { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .badge {
+    font-size: 11px; padding: 3px 8px; border-radius: 4px;
+    background: var(--accent-light); color: var(--accent);
+  }
+  .card .date { font-size: 12px; color: var(--muted); }
+  .card h2 { font-size: 17px; font-weight: 600; line-height: 1.4; margin-bottom: 8px; }
+  .card h2 a { color: var(--text); text-decoration: none; }
+  .card .summary { font-size: 14px; color: #5F5E5A; line-height: 1.7; margin-bottom: 10px; }
+  .card .note {
+    font-size: 13px; line-height: 1.6; color: #71431F;
+    background: #FAEEDA; border-left: 3px solid #EF9F27;
+    padding: 8px 12px; border-radius: 0 8px 8px 0; margin-bottom: 10px;
+  }
+  .card .note-label { font-weight: 600; margin-right: 6px; }
+  .card .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); padding: 2px 8px; border-radius: 10px; }
+  .card .open { font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 500; }
+  .empty { text-align: center; color: var(--muted); padding: 80px 20px; font-size: 14px; line-height: 2; }
+  .loading { text-align: center; color: var(--muted); padding: 80px 0; font-size: 14px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Dancy 的信息流</h1>
+    <div class="sub">只刷自己筛选过的好东西</div>
+    <a class="add-btn" href="此处替换为你自己创建的收集表单分享链接" target="_blank" rel="noopener">＋ 收集</a>
+  </div>
+  <div class="filters" id="filters"></div>
+  <div class="feed" id="feed"><div class="loading">加载中…</div></div>
+
+<script>
+  const TYPE_COLORS = {
+    '公众号文章': ['#E6F1FB', '#185FA5'],
+    '小红书笔记': ['#FBEAF0', '#993556'],
+    '即刻动态':   ['#E1F5EE', '#0F6E56'],
+    '知识星球':   ['#FAEEDA', '#854F0B'],
+    '网页':       ['#EEEDFE', '#534AB7'],
+    '视频':       ['#FCEBEB', '#A32D2D']
+  };
+  let ALL = [];
+  let current = '全部';
+
+  function fmtDate(ts) {
+    const d = new Date(ts);
+    return `${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+
+  function badgeStyle(t) {
+    const c = TYPE_COLORS[t] || ['#F1EFE8', '#5F5E5A'];
+    return `background:${c[0]};color:${c[1]};`;
+  }
+
+  function render() {
+    const feed = document.getElementById('feed');
+    const list = current === '全部' ? ALL : ALL.filter(x => x.type === current);
+    if (!list.length) {
+      feed.innerHTML = '<div class="empty">还没有内容<br>去「＋收集」丢一条链接进来吧</div>';
+      return;
+    }
+    feed.innerHTML = list.map(x => `
+      <div class="card">
+        <div class="meta">
+          <span class="badge" style="${badgeStyle(x.type)}">${x.type || '网页'}</span>
+          <span class="date">${fmtDate(x.ts)}</span>
+        </div>
+        <h2><a href="${x.url}" target="_blank" rel="noopener">${x.title || x.url}</a></h2>
+        ${x.summary ? `<div class="summary">${esc(x.summary)}</div>` : ''}
+        ${x.note ? `<div class="note"><span class="note-label">我的感悟</span>${esc(x.note)}</div>` : ''}
+        ${(x.tags && x.tags.length) ? `<div class="tags">${x.tags.map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div>` : ''}
+        <a class="open" href="${x.url}" target="_blank" rel="noopener">查看原文 →</a>
+      </div>
+    `).join('');
+  }
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function renderFilters() {
+    const types = [...new Set(ALL.map(x => x.type || '网页'))];
+    const box = document.getElementById('filters');
+    box.innerHTML = ['全部', ...types].map(t =>
+      `<button class="chip ${t===current?'active':''}" data-t="${t}">${t}</button>`
+    ).join('');
+    box.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+      current = c.dataset.t; renderFilters(); render();
+    }));
+  }
+
+  async function load() {
+    try {
+      const res = await fetch('./data.json?v=' + Date.now());
+      const data = await res.json();
+      ALL = data.items || [];
+      renderFilters(); render();
+    } catch (e) {
+      document.getElementById('feed').innerHTML = '<div class="empty">加载失败，请稍后刷新</div>';
+    }
+  }
+  load();
+</script>
+</body>
+</html>

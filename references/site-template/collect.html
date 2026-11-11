@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>收集 · Dancy 的信息流</title>
+<style>
+  :root {
+    --bg: #FAFAF7; --card: #FFFFFF; --text: #2C2C2A; --muted: #888780;
+    --line: #E8E6DF; --accent: #0F6E56; --accent-light: #E1F5EE; --danger: #A32D2D;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  .wrap { max-width: 480px; width: 100%; margin: 0 auto; padding: 28px 20px 40px; flex: 1; }
+  .logo { font-size: 13px; color: var(--accent); font-weight: 600; letter-spacing: 2px; margin-bottom: 6px; }
+  h1 { font-size: 24px; font-weight: 600; margin-bottom: 6px; }
+  .tip { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 28px; }
+  label { display: block; font-size: 13px; font-weight: 500; margin: 18px 0 8px; }
+  label .req { color: var(--danger); }
+  input[type=text], textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; font-size: 15px; font-family: inherit;
+    background: var(--card); color: var(--text); outline: none;
+    transition: border-color .15s;
+  }
+  input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { min-height: 84px; resize: vertical; line-height: 1.6; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+  .types { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .type-chip {
+    padding: 8px 14px; border-radius: 18px; border: 1px solid var(--line);
+    background: var(--card); font-size: 14px; color: var(--muted); cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .type-chip.active { background: var(--accent-light); color: var(--accent); border-color: var(--accent); font-weight: 500; }
+  .submit {
+    width: 100%; margin-top: 32px; padding: 15px; border: none; border-radius: 12px;
+    background: var(--accent); color: #fff; font-size: 16px; font-weight: 500;
+    cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent;
+  }
+  .submit:disabled { opacity: .5; }
+  .toast {
+    position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%);
+    background: #2C2C2A; color: #fff; padding: 12px 24px; border-radius: 24px;
+    font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .25s;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+  .done-view { display: none; text-align: center; padding-top: 80px; }
+  .done-view .icon { font-size: 52px; margin-bottom: 16px; }
+  .done-view h2 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  .done-view p { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+  .done-view a {
+    display: inline-block; margin: 0 8px; padding: 11px 22px; border-radius: 10px;
+    font-size: 14px; text-decoration: none; font-weight: 500;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-ghost { border: 1px solid var(--line); color: var(--text); background: var(--card); }
+  .bottom-links { text-align: center; margin-top: 28px; }
+  .bottom-links a { font-size: 13px; color: var(--muted); text-decoration: none; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="form-view">
+      <div class="logo">DANCY 的信息流</div>
+      <h1>随手收集</h1>
+      <div class="tip">看到好东西就丢进来，顺手写一句感悟——<br>收藏那一刻的判断最值钱，剩下的交给 AI 整理。</div>
+
+      <label>链接 <span class="req">*</span></label>
+      <input type="text" id="url" placeholder="粘贴公众号 / 小红书 / 网页链接" autocomplete="off">
+
+      <label>类型</label>
+      <div class="types" id="types"></div>
+
+      <label>我的感悟</label>
+      <textarea id="note" placeholder="不用多写，一句话就行。比如：这个案例可以收进案例库 / 这个开头写得好，以后参考 / 这个工具值得测一下"></textarea>
+      <div class="hint">这句感悟会一直跟着这条内容，以后回看时提醒你当初为什么收藏。</div>
+
+      <button class="submit" id="submit">收 进 信 息 流</button>
+      <div class="bottom-links"><a href="./feed.html">先去看看信息流 →</a></div>
+    </div>
+
+    <div class="done-view" id="done-view">
+      <div class="icon">✅</div>
+      <h2>已收进信息流</h2>
+      <p>AI 会自动抓取正文、生成摘要和标签，稍后在信息流里就能看到</p>
+      <a class="btn-primary" href="./feed.html">去刷信息流</a>
+      <a class="btn-ghost" href="#" id="again">再收一条</a>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script>
+  const TYPES = ['公众号文章', '小红书笔记', '即刻动态', '知识星球', '网页', '视频'];
+  let type = '公众号文章';
+
+  const typesBox = document.getElementById('types');
+  typesBox.innerHTML = TYPES.map(t =>
+    `<button class="type-chip ${t===type?'active':''}" data-t="${t}">${t}</button>`
+  ).join('');
+  typesBox.querySelectorAll('.type-chip').forEach(c => c.addEventListener('click', () => {
+    type = c.dataset.t;
+    typesBox.querySelectorAll('.type-chip').forEach(x => x.classList.toggle('active', x.dataset.t === type));
+  }));
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  document.getElementById('submit').addEventListener('click', async () => {
+    const url = document.getElementById('url').value.trim();
+    const note = document.getElementById('note').value.trim();
+    if (!url) return toast('先粘贴一个链接吧');
+    if (!/^https?:\/\//i.test(url)) return toast('链接要以 http 或 https 开头');
+    const btn = document.getElementById('submit');
+    btn.disabled = true; btn.textContent = '提交中…';
+    try {
+      const res = await fetch('/api/collect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, type, note })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('form-view').style.display = 'none';
+        document.getElementById('done-view').style.display = 'block';
+        document.getElementById('url').value = '';
+        document.getElementById('note').value = '';
+      } else {
+        toast(data.error || '提交失败，请重试');
+      }
+    } catch (e) {
+      toast('网络异常，请重试');
+    }
+    btn.disabled = false; btn.textContent = '收 进 信 息 流';
+  });
+
+  document.getElementById('again').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('done-view').style.display = 'none';
+    document.getElementById('form-view').style.display = 'block';
+    document.getElementById('url').focus();
+  });
+</script>
+</body>
+</html>
